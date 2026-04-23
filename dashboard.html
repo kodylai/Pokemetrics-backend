@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pokémon Card Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-primary: #0a0a0f;
+    --bg-card: #12121a;
+    --bg-card-hover: #1a1a25;
+    --border: #1e1e2e;
+    --text-primary: #e8e8ed;
+    --text-secondary: #8888a0;
+    --text-muted: #55556a;
+    --accent-red: #ff4466;
+    --accent-green: #22ddaa;
+    --accent-blue: #4488ff;
+    --accent-yellow: #ffcc33;
+    --accent-purple: #aa66ff;
+    --accent-orange: #ff8844;
+    --overvalued: #ff4466;
+    --undervalued: #22ddaa;
+    --fair: #4488ff;
+    --heating: #ff8844;
+    --cooling: #4488ff;
+    --tightening: #22ddaa;
+    --loosening: #aa66ff;
+    --stable: #8888a0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(ellipse at 20% 20%, rgba(68,136,255,0.04) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(170,102,255,0.03) 0%, transparent 50%);
+    z-index: 0;
+    pointer-events: none;
+  }
+  .container { max-width: 1320px; margin: 0 auto; padding: 1.5rem 2rem; position: relative; z-index: 1; }
+
+  /* ── Nav Tabs ── */
+  .nav { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
+  .nav-logo { font-family: 'Space Mono', monospace; font-size: 1.3rem; font-weight: 700; }
+  .nav-logo span { color: var(--accent-yellow); }
+  .nav-tabs { display: flex; gap: 0.25rem; margin-left: auto; }
+  .nav-tab {
+    padding: 0.5rem 1.2rem; border-radius: 8px; cursor: pointer; font-size: 0.8rem;
+    font-family: 'Space Mono', monospace; text-transform: uppercase; letter-spacing: 0.5px;
+    background: transparent; border: 1px solid transparent; color: var(--text-muted); transition: all 0.2s;
+  }
+  .nav-tab:hover { color: var(--text-secondary); background: var(--bg-card); }
+  .nav-tab.active { color: var(--accent-blue); border-color: var(--accent-blue); background: rgba(68,136,255,0.08); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .refresh-btn {
+    background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary);
+    padding: 0.5rem 0.8rem; border-radius: 8px; font-family: 'Space Mono', monospace;
+    font-size: 0.75rem; cursor: pointer; transition: all 0.2s;
+  }
+  .refresh-btn:hover { background: var(--accent-blue); color: var(--bg-primary); }
+
+  /* ── Shared Components ── */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+  .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.1rem; transition: all 0.2s; }
+  .stat-card:hover { background: var(--bg-card-hover); }
+  .stat-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 0.4rem; font-family: 'Space Mono', monospace; }
+  .stat-value { font-size: 1.4rem; font-weight: 700; font-family: 'Space Mono', monospace; }
+  .stat-sub { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem; font-family: 'Space Mono', monospace; }
+  .green { color: var(--accent-green); } .blue { color: var(--accent-blue); }
+  .purple { color: var(--accent-purple); } .yellow { color: var(--accent-yellow); }
+  .orange { color: var(--accent-orange); } .red { color: var(--accent-red); }
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+  .chart-panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; }
+  .chart-panel.full { grid-column: 1 / -1; }
+  .chart-panel h3 { font-family: 'Space Mono', monospace; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); margin-bottom: 1rem; }
+  .chart-container { position: relative; height: 260px; }
+  .chart-container.tall { height: 320px; }
+
+  /* ── Card Rows ── */
+  .section-title { font-family: 'Space Mono', monospace; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); margin-bottom: 0.8rem; }
+  .table-header {
+    display: grid; padding: 0 1.2rem 0.4rem; font-size: 0.6rem; text-transform: uppercase;
+    letter-spacing: 1.5px; color: var(--text-muted); font-family: 'Space Mono', monospace;
+  }
+  .card-row {
+    display: grid; align-items: center; padding: 0.9rem 1.2rem; background: var(--bg-card);
+    border: 1px solid var(--border); border-radius: 10px; margin-bottom: 0.4rem;
+    transition: all 0.2s; cursor: default;
+  }
+  .card-row:hover { background: var(--bg-card-hover); transform: translateX(4px); }
+  .card-name { font-weight: 600; font-size: 0.9rem; }
+  .card-name .set { font-size: 0.7rem; color: var(--text-muted); font-weight: 400; }
+  .mono { font-family: 'Space Mono', monospace; }
+  .badge {
+    display: inline-block; padding: 0.25rem 0.7rem; border-radius: 20px; font-size: 0.65rem;
+    font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; font-family: 'Space Mono', monospace;
+  }
+  .badge.overvalued { background: rgba(255,68,102,0.12); color: var(--overvalued); }
+  .badge.undervalued { background: rgba(34,221,170,0.12); color: var(--undervalued); }
+  .badge.fair { background: rgba(68,136,255,0.1); color: var(--fair); }
+  .badge.HEATING { background: rgba(255,136,68,0.12); color: var(--heating); }
+  .badge.COOLING { background: rgba(68,136,255,0.12); color: var(--cooling); }
+  .badge.TIGHTENING { background: rgba(34,221,170,0.12); color: var(--tightening); }
+  .badge.LOOSENING { background: rgba(170,102,255,0.12); color: var(--loosening); }
+  .badge.STABLE { background: rgba(136,136,160,0.12); color: var(--stable); }
+
+  /* ── Price Model Table ── */
+  .price-header { grid-template-columns: 2fr 1fr 1fr 1fr 1fr 120px; }
+  .price-row { grid-template-columns: 2fr 1fr 1fr 1fr 1fr 120px; }
+  .price-row.overvalued { border-left: 3px solid var(--overvalued); }
+  .price-row.undervalued { border-left: 3px solid var(--undervalued); }
+  .price-row.fair { border-left: 3px solid var(--fair); }
+
+  /* ── Dynamics Table ── */
+  .dynamics-header { grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 110px; }
+  .dynamics-row { grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 110px; }
+  .dynamics-row.HEATING { border-left: 3px solid var(--heating); }
+  .dynamics-row.COOLING { border-left: 3px solid var(--cooling); }
+  .dynamics-row.TIGHTENING { border-left: 3px solid var(--tightening); }
+  .dynamics-row.LOOSENING { border-left: 3px solid var(--loosening); }
+  .dynamics-row.STABLE { border-left: 3px solid var(--stable); }
+
+  /* ── Gauge ── */
+  .gauge-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .gauge-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem; text-align: center; }
+  .gauge-card .card-label { font-size: 0.75rem; font-weight: 600; margin-bottom: 0.8rem; }
+  .gauge-card .card-sublabel { font-size: 0.6rem; color: var(--text-muted); font-family: 'Space Mono', monospace; }
+  .gauge-bar { height: 8px; background: var(--border); border-radius: 4px; margin: 0.6rem 0; overflow: hidden; position: relative; }
+  .gauge-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+  .gauge-values { display: flex; justify-content: space-between; font-family: 'Space Mono', monospace; font-size: 0.7rem; }
+  .gauge-main { font-size: 1.6rem; font-weight: 700; font-family: 'Space Mono', monospace; }
+
+  .loading { text-align: center; padding: 3rem; color: var(--text-muted); font-family: 'Space Mono', monospace; }
+  .loading::after { content: ''; display: inline-block; width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent-blue); border-radius: 50%; animation: spin 0.8s linear infinite; margin-left: 0.5rem; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 900px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .charts-grid { grid-template-columns: 1fr; }
+    .price-row, .dynamics-row { grid-template-columns: 1fr 1fr; gap: 0.4rem; font-size: 0.8rem; }
+    .table-header { display: none; }
+    .gauge-row { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- ── Navigation ── -->
+  <div class="nav">
+    <div class="nav-logo">🎴 Pokémon <span>Analytics</span></div>
+    <div class="nav-tabs">
+      <div class="nav-tab active" onclick="switchTab('price')">Price Model</div>
+      <div class="nav-tab" onclick="switchTab('dynamics')">Market Dynamics</div>
+    </div>
+    <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- TAB 1: PRICE MODEL                                                   -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <div id="tab-price" class="tab-content active">
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">R² Accuracy</div><div class="stat-value blue" id="pm-r2">—</div></div>
+      <div class="stat-card"><div class="stat-label">Cards Tracked</div><div class="stat-value purple" id="pm-count">—</div></div>
+      <div class="stat-card"><div class="stat-label">Desirability Impact</div><div class="stat-value green" id="pm-des">—</div></div>
+      <div class="stat-card"><div class="stat-label">Pull Cost Impact</div><div class="stat-value yellow" id="pm-pull">—</div></div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-panel"><h3>Predicted vs Market Price</h3><div class="chart-container"><canvas id="scatterChart"></canvas></div></div>
+      <div class="chart-panel"><h3>Over / Undervalued</h3><div class="chart-container"><canvas id="residualChart"></canvas></div></div>
+    </div>
+
+    <div class="section-title">Card Analysis</div>
+    <div class="table-header price-header"><div>Card</div><div>Market $</div><div>Predicted $</div><div>Diff</div><div>Scores</div><div>Status</div></div>
+    <div id="price-cards"><div class="loading">Loading model data</div></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- TAB 2: MARKET DYNAMICS                                                -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <div id="tab-dynamics" class="tab-content">
+    <div class="stats-row" id="dyn-stats">
+      <div class="stat-card"><div class="stat-label">Avg Demand Pressure</div><div class="stat-value orange" id="dyn-dp">—</div></div>
+      <div class="stat-card"><div class="stat-label">Avg Supply Shift</div><div class="stat-value purple" id="dyn-ss">—</div></div>
+      <div class="stat-card"><div class="stat-label">Heating</div><div class="stat-value red" id="dyn-heat">—</div></div>
+      <div class="stat-card"><div class="stat-label">Cooling</div><div class="stat-value blue" id="dyn-cool">—</div></div>
+    </div>
+
+    <!-- Gauges -->
+    <div class="section-title">Demand Pressure & Supply Saturation</div>
+    <div class="gauge-row" id="gauge-row"></div>
+
+    <!-- Charts -->
+    <div class="charts-grid">
+      <div class="chart-panel full"><h3>Listing Flow — Active / New / Sold (30 Days)</h3><div class="chart-container tall"><canvas id="listingFlowChart"></canvas></div></div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-panel"><h3>Demand Pressure by Card</h3><div class="chart-container"><canvas id="demandChart"></canvas></div></div>
+      <div class="chart-panel"><h3>Supply Saturation Shift</h3><div class="chart-container"><canvas id="supplyChart"></canvas></div></div>
+    </div>
+
+    <!-- Card Table -->
+    <div class="section-title">Market Dynamics Detail</div>
+    <div class="table-header dynamics-header"><div>Card</div><div>Demand %</div><div>Supply Shift</div><div>Sales/Day</div><div>Price 7d</div><div>New Listing Δ</div><div>Signal</div></div>
+    <div id="dynamics-cards"><div class="loading">Loading dynamics</div></div>
+  </div>
+</div>
+
+<script>
+// ── State ──
+let charts = {};
+const COLORS = ['#ff4466','#22ddaa','#4488ff','#ffcc33','#aa66ff','#ff8844','#44ddff','#ff66aa'];
+
+// ── Tab Switching ──
+function switchTab(tab) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── Load All Data ──
+async function loadAll() {
+  loadPriceModel();
+  loadDynamics();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PRICE MODEL
+// ══════════════════════════════════════════════════════════════════════════════
+async function loadPriceModel() {
+  try {
+    const res = await fetch('/api/model');
+    const data = await res.json();
+    if (data.error) { document.getElementById('price-cards').innerHTML = `<div class="loading" style="color:var(--accent-red)">${data.error}</div>`; return; }
+
+    document.getElementById('pm-r2').textContent = data.r_squared.toFixed(3);
+    document.getElementById('pm-count').textContent = data.num_cards;
+    document.getElementById('pm-des').textContent = `+${data.desirability_impact}%`;
+    document.getElementById('pm-pull').textContent = `+${data.pull_cost_impact}%`;
+
+    renderPriceCards(data.cards);
+    renderScatter(data.cards);
+    renderResidual(data.cards);
+  } catch(e) {
+    document.getElementById('price-cards').innerHTML = `<div class="loading" style="color:var(--accent-red)">Failed to load</div>`;
+  }
+}
+
+function renderPriceCards(cards) {
+  document.getElementById('price-cards').innerHTML = cards.map(c => `
+    <div class="card-row price-row ${c.status}">
+      <div class="card-name">${c.pokemon}<div class="set">${c.card_name} · ${c.set_name}</div></div>
+      <div class="mono" style="font-weight:700">$${c.market_price.toLocaleString()}</div>
+      <div class="mono" style="color:var(--text-secondary)">$${c.predicted_price.toLocaleString()}</div>
+      <div class="mono" style="font-weight:700;color:${c.residual_pct>0?'var(--overvalued)':'var(--undervalued)'}">${c.residual_pct>0?'+':''}${c.residual_pct}%</div>
+      <div class="mono" style="font-size:0.7rem;color:var(--text-muted)">PC ${c.pull_cost_score} · DS ${c.desirability_score}</div>
+      <div><span class="badge ${c.status}">${c.status}</span></div>
+    </div>
+  `).join('');
+}
+
+function renderScatter(cards) {
+  const ctx = document.getElementById('scatterChart').getContext('2d');
+  if (charts.scatter) charts.scatter.destroy();
+  const mx = Math.max(...cards.map(c=>c.market_price),...cards.map(c=>c.predicted_price))*1.15;
+  charts.scatter = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        { data: cards.map(c=>({x:c.market_price,y:c.predicted_price})), backgroundColor: cards.map(c=>c.status==='overvalued'?'rgba(255,68,102,0.8)':c.status==='undervalued'?'rgba(34,221,170,0.8)':'rgba(68,136,255,0.8)'), pointRadius:8, pointHoverRadius:11 },
+        { data:[{x:0,y:0},{x:mx,y:mx}], type:'line', borderColor:'rgba(255,255,255,0.12)', borderDash:[6,4], pointRadius:0, borderWidth:1 }
+      ]
+    },
+    options: { responsive:true, maintainAspectRatio:false,
+      scales:{ x:{title:{display:true,text:'Market $',color:'#8888a0',font:{family:'Space Mono',size:10}},grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#55556a',font:{family:'Space Mono',size:9}},max:mx}, y:{title:{display:true,text:'Predicted $',color:'#8888a0',font:{family:'Space Mono',size:10}},grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#55556a',font:{family:'Space Mono',size:9}},max:mx} },
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:ctx2=>{const d=cards[ctx2.dataIndex];return d?`${d.pokemon}: $${d.market_price}→$${d.predicted_price}`:'';}}, backgroundColor:'#1a1a25',borderColor:'#1e1e2e',borderWidth:1 }}
+    }
+  });
+}
+
+function renderResidual(cards) {
+  const ctx = document.getElementById('residualChart').getContext('2d');
+  if (charts.residual) charts.residual.destroy();
+  const sorted = [...cards].sort((a,b)=>a.residual_pct-b.residual_pct);
+  charts.residual = new Chart(ctx, {
+    type:'bar',
+    data: { labels:sorted.map(c=>c.pokemon), datasets:[{ data:sorted.map(c=>c.residual_pct), backgroundColor:sorted.map(c=>c.residual_pct>20?'rgba(255,68,102,0.7)':c.residual_pct<-20?'rgba(34,221,170,0.7)':'rgba(68,136,255,0.5)'), borderRadius:4, borderSkipped:false }] },
+    options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      scales:{ x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#55556a',font:{family:'Space Mono',size:9}}}, y:{grid:{display:false},ticks:{color:'#8888a0',font:{family:'Space Mono',size:10}}} },
+      plugins:{ legend:{display:false} }
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MARKET DYNAMICS
+// ══════════════════════════════════════════════════════════════════════════════
+async function loadDynamics() {
+  try {
+    const [dynRes, listRes] = await Promise.all([
+      fetch('/api/dynamics'),
+      fetch('/api/listings')
+    ]);
+    const dynamics = await dynRes.json();
+    const listings = await listRes.json();
+
+    if (!dynamics.length) {
+      document.getElementById('dynamics-cards').innerHTML = '<div class="loading">No dynamics data yet — run market_collector.py first</div>';
+      return;
+    }
+
+    // Stats
+    const avgDP = (dynamics.reduce((s,d)=>s+d.demand_pressure,0)/dynamics.length).toFixed(1);
+    const avgSS = (dynamics.reduce((s,d)=>s+d.supply_saturation_shift,0)/dynamics.length).toFixed(3);
+    const heating = dynamics.filter(d=>d.market_signal==='HEATING'||d.market_signal==='TIGHTENING').length;
+    const cooling = dynamics.filter(d=>d.market_signal==='COOLING'||d.market_signal==='LOOSENING').length;
+
+    document.getElementById('dyn-dp').textContent = avgDP + '%';
+    document.getElementById('dyn-ss').textContent = avgSS + 'x';
+    document.getElementById('dyn-heat').textContent = heating;
+    document.getElementById('dyn-cool').textContent = cooling;
+
+    renderGauges(dynamics);
+    renderDynamicsCards(dynamics);
+    renderListingFlow(listings);
+    renderDemandChart(dynamics);
+    renderSupplyChart(dynamics);
+
+  } catch(e) {
+    document.getElementById('dynamics-cards').innerHTML = `<div class="loading" style="color:var(--accent-red)">Failed to load dynamics</div>`;
+  }
+}
+
+function renderGauges(dynamics) {
+  const row = document.getElementById('gauge-row');
+  row.innerHTML = dynamics.map(d => {
+    const dpPct = Math.min(d.demand_pressure, 30) / 30 * 100;
+    const dpColor = d.demand_pressure > 10 ? 'var(--accent-red)' : d.demand_pressure > 5 ? 'var(--accent-orange)' : 'var(--accent-green)';
+    const ssVal = d.supply_saturation_shift;
+    const ssPct = Math.min(Math.abs(ssVal - 1) * 100, 100);
+    const ssColor = ssVal > 1.1 ? 'var(--accent-purple)' : ssVal < 0.9 ? 'var(--accent-green)' : 'var(--accent-blue)';
+    const ssLabel = ssVal > 1.05 ? 'Loosening' : ssVal < 0.95 ? 'Tightening' : 'Balanced';
+    return `
+      <div class="gauge-card">
+        <div class="card-label">${d.card_name}</div>
+        <div class="gauge-main" style="color:${dpColor}">${d.demand_pressure}%</div>
+        <div class="card-sublabel">Demand Pressure</div>
+        <div class="gauge-bar"><div class="gauge-fill" style="width:${dpPct}%;background:${dpColor}"></div></div>
+        <div style="margin-top:0.8rem">
+          <div class="gauge-main" style="font-size:1.2rem;color:${ssColor}">${ssVal}x</div>
+          <div class="card-sublabel">Supply: ${ssLabel}</div>
+          <div class="gauge-bar"><div class="gauge-fill" style="width:${ssPct}%;background:${ssColor}"></div></div>
+        </div>
+        <div style="margin-top:0.6rem"><span class="badge ${d.market_signal}">${d.market_signal}</span></div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderDynamicsCards(dynamics) {
+  document.getElementById('dynamics-cards').innerHTML = dynamics.map(d => `
+    <div class="card-row dynamics-row ${d.market_signal}">
+      <div class="card-name">${d.card_name}</div>
+      <div class="mono" style="font-weight:700;color:${d.demand_pressure>10?'var(--accent-red)':d.demand_pressure>5?'var(--accent-orange)':'var(--accent-green)'}">${d.demand_pressure}%</div>
+      <div class="mono" style="color:${d.supply_saturation_shift>1.1?'var(--accent-purple)':d.supply_saturation_shift<0.9?'var(--accent-green)':'var(--text-secondary)'}">${d.supply_saturation_shift}x</div>
+      <div class="mono">${d.sales_velocity}/day</div>
+      <div class="mono" style="color:${d.price_trend_7d>0?'var(--accent-green)':'var(--accent-red)'}">${d.price_trend_7d>0?'+':''}${d.price_trend_7d}%</div>
+      <div class="mono" style="color:${d.new_listing_trend>1?'var(--accent-orange)':'var(--text-secondary)'}">${d.new_listing_trend}x</div>
+      <div><span class="badge ${d.market_signal}">${d.market_signal}</span></div>
+    </div>
+  `).join('');
+}
+
+function renderListingFlow(listings) {
+  const ctx = document.getElementById('listingFlowChart').getContext('2d');
+  if (charts.flow) charts.flow.destroy();
+
+  // Group by card
+  const byCard = {};
+  listings.forEach(l => {
+    if (!byCard[l.card_name]) byCard[l.card_name] = [];
+    byCard[l.card_name].push(l);
+  });
+
+  const cardNames = Object.keys(byCard);
+  const datasets = [];
+
+  cardNames.forEach((name, i) => {
+    const data = byCard[name].sort((a,b) => a.snapshot_date.localeCompare(b.snapshot_date));
+    const color = COLORS[i % COLORS.length];
+
+    datasets.push({
+      label: `${name} (Active)`,
+      data: data.map(d => ({ x: d.snapshot_date, y: d.active_listings })),
+      borderColor: color,
+      backgroundColor: color + '20',
+      fill: true,
+      tension: 0.3,
+      borderWidth: 2,
+      pointRadius: 2,
+    });
+
+    datasets.push({
+      label: `${name} (Sold Est.)`,
+      data: data.map(d => ({ x: d.snapshot_date, y: -d.estimated_sold })),
+      borderColor: color,
+      backgroundColor: color + '40',
+      fill: true,
+      tension: 0.3,
+      borderWidth: 1,
+      borderDash: [4, 3],
+      pointRadius: 1,
+    });
+  });
+
+  charts.flow = new Chart(ctx, {
+    type: 'line',
+    data: { datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { type:'category', labels: [...new Set(listings.map(l=>l.snapshot_date))].sort(),
+          grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#55556a',font:{family:'Space Mono',size:9},maxTicksLimit:10} },
+        y: { grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#55556a',font:{family:'Space Mono',size:9}},
+          title:{display:true,text:'↑ Active Supply    |    Sold Estimate ↓',color:'#8888a0',font:{family:'Space Mono',size:10}} }
+      },
+      plugins: { legend:{ labels:{color:'#8888a0',font:{family:'Space Mono',size:9},boxWidth:12} },
+        tooltip:{ backgroundColor:'#1a1a25',borderColor:'#1e1e2e',borderWidth:1 } }
+    }
+  });
+}
+
+function renderDemandChart(dynamics) {
+  const ctx = document.getElementById('demandChart').getContext('2d');
+  if (charts.demand) charts.demand.destroy();
+  charts.demand = new Chart(ctx, {
+    type:'bar',
+    data: {
+      labels: dynamics.map(d => d.card_name.split(' ').slice(0,2).join(' ')),
+      datasets: [{ data: dynamics.map(d=>d.demand_pressure),
+        backgroundColor: dynamics.map(d=>d.demand_pressure>10?'rgba(255,68,102,0.7)':d.demand_pressure>5?'rgba(255,136,68,0.7)':'rgba(34,221,170,0.7)'),
+        borderRadius:6, borderSkipped:false }]
+    },
+    options: { responsive:true, maintainAspectRatio:false,
+      scales:{ x:{grid:{display:false},ticks:{color:'#8888a0',font:{family:'Space Mono',size:9}}}, y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#55556a',font:{family:'Space Mono',size:9}},title:{display:true,text:'Demand %',color:'#8888a0',font:{family:'Space Mono',size:10}}} },
+      plugins:{ legend:{display:false} }
+    }
+  });
+}
+
+function renderSupplyChart(dynamics) {
+  const ctx = document.getElementById('supplyChart').getContext('2d');
+  if (charts.supply) charts.supply.destroy();
+  charts.supply = new Chart(ctx, {
+    type:'bar',
+    data: {
+      labels: dynamics.map(d => d.card_name.split(' ').slice(0,2).join(' ')),
+      datasets: [{ data: dynamics.map(d=>d.supply_saturation_shift),
+        backgroundColor: dynamics.map(d=>d.supply_saturation_shift>1.1?'rgba(170,102,255,0.7)':d.supply_saturation_shift<0.9?'rgba(34,221,170,0.7)':'rgba(68,136,255,0.5)'),
+        borderRadius:6, borderSkipped:false }]
+    },
+    options: { responsive:true, maintainAspectRatio:false,
+      scales: {
+        x:{grid:{display:false},ticks:{color:'#8888a0',font:{family:'Space Mono',size:9}}},
+        y:{ grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#55556a',font:{family:'Space Mono',size:9}},
+          title:{display:true,text:'Supply Shift (1.0 = stable)',color:'#8888a0',font:{family:'Space Mono',size:10}} }
+      },
+      plugins:{ legend:{display:false}, annotation:{ annotations:{ baseline:{ type:'line',yMin:1,yMax:1,borderColor:'rgba(255,255,255,0.2)',borderDash:[4,4],borderWidth:1 } } } }
+    }
+  });
+}
+
+// ── Init ──
+loadAll();
+setInterval(loadAll, 5 * 60 * 1000);
+</script>
+</body>
+</html>
