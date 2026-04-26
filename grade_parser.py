@@ -37,13 +37,13 @@ def parse_grade(title: str) -> dict:
     upper = title.upper()
 
     # ── PSA grades ──
-    psa_match = re.search(r'\bPSA\s*(\d+\.?\d*)\b', upper)
+    psa_match = re.search(r'\bPSA\s*(\d+(?:\.\d+)?)', upper)
     if psa_match:
         grade = psa_match.group(1)
         return {"grader": "PSA", "grade": grade, "label": f"PSA {grade}", "category": "graded"}
 
     # ── BGS / Beckett grades ──
-    bgs_match = re.search(r'\b(?:BGS|BECKETT)\s*(\d+\.?\d*)\b', upper)
+    bgs_match = re.search(r'\b(?:BGS|BECKETT|BKT)\s*(\d+(?:\.\d+)?)', upper)
     if bgs_match:
         grade = bgs_match.group(1)
         return {"grader": "BGS", "grade": grade, "label": f"BGS {grade}", "category": "graded"}
@@ -53,19 +53,19 @@ def parse_grade(title: str) -> dict:
         return {"grader": "BGS", "grade": "10", "label": "BGS 10 Black Label", "category": "graded"}
 
     # ── CGC grades ──
-    cgc_match = re.search(r'\bCGC\s*(\d+\.?\d*)\b', upper)
+    cgc_match = re.search(r'\bCGC\s*(\d+(?:\.\d+)?)', upper)
     if cgc_match:
         grade = cgc_match.group(1)
         return {"grader": "CGC", "grade": grade, "label": f"CGC {grade}", "category": "graded"}
 
     # ── AGS grades ──
-    ags_match = re.search(r'\bAGS\s*(\d+\.?\d*)\b', upper)
+    ags_match = re.search(r'\bAGS\s*(\d+(?:\.\d+)?)', upper)
     if ags_match:
         grade = ags_match.group(1)
         return {"grader": "AGS", "grade": grade, "label": f"AGS {grade}", "category": "graded"}
 
     # ── ACE grades ──
-    ace_match = re.search(r'\bACE\s*(\d+\.?\d*)\b', upper)
+    ace_match = re.search(r'\bACE\s*(\d+(?:\.\d+)?)', upper)
     if ace_match:
         grade = ace_match.group(1)
         return {"grader": "ACE", "grade": grade, "label": f"ACE {grade}", "category": "graded"}
@@ -104,17 +104,14 @@ def init_grade_columns():
 
 
 def update_all_grades():
-    """Parse grades for all existing sales records that don't have one yet."""
+    """Parse grades for ALL sales records."""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
 
-    c.execute("""
-        SELECT id, title FROM sales_history
-        WHERE grader IS NULL OR grader = 'Raw' OR grader = ''
-    """)
+    c.execute("SELECT id, title FROM sales_history")
     rows = c.fetchall()
 
-    updated = 0
+    graded = 0
     for row_id, title in rows:
         result = parse_grade(title)
         c.execute("""
@@ -122,12 +119,12 @@ def update_all_grades():
             SET grader = ?, grade = ?, grade_label = ?, grade_category = ?
             WHERE id = ?
         """, (result["grader"], result["grade"], result["label"], result["category"], row_id))
-        updated += 1
+        if result["category"] == "graded":
+            graded += 1
 
     conn.commit()
     conn.close()
-    print(f"✅  Parsed grades for {updated} sales records")
-    return updated
+    print(f"✅  Parsed grades for {len(rows)} sales records ({graded} graded, {len(rows) - graded} raw)")
 
 
 def get_grade_breakdown(card_name: str) -> list:

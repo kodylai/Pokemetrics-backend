@@ -113,9 +113,14 @@ def api_sales():
     return jsonify(results)
 
 
-@app.route("/api/sales/<card_name>")
+@app.route("/api/sales/<path:card_name>")
 def api_card_sales(card_name):
     """Get sales history for a specific card. ?verified=true"""
+    # Strip leading "summary" to avoid conflict with summary route
+    if card_name == "summary":
+        return api_sales_summary()
+    if card_name.startswith("trend/"):
+        return api_sales_trend(card_name[6:])
     verified = request.args.get("verified", "").lower() == "true"
     results = get_sales_history(card_name, verified_only=verified)
     return jsonify(results)
@@ -129,7 +134,7 @@ def api_sales_summary():
     return jsonify(results)
 
 
-@app.route("/api/sales/trend/<card_name>")
+@app.route("/api/sales/trend/<path:card_name>")
 def api_sales_trend(card_name):
     """Get daily price trend. ?verified=true"""
     verified = request.args.get("verified", "").lower() == "true"
@@ -139,7 +144,7 @@ def api_sales_trend(card_name):
 
 # ── GRADE BREAKDOWN API ─────────────────────────────────────────────────────
 
-@app.route("/api/grades/<card_name>")
+@app.route("/api/grades/<path:card_name>")
 def api_grade_breakdown(card_name):
     """Get price breakdown by grade (PSA 10, PSA 9, BGS 9.5, Raw, etc.)"""
     results = get_grade_breakdown(card_name)

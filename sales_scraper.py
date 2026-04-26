@@ -54,194 +54,38 @@ DB_PATH = "pokemon_cards.db"
 # ── Cards to track ──
 CARDS_TO_SCRAPE = [
     {
-        "card_name": "Umbreon ex 187 SIR",
+        "card_name": "Umbreon ex 187 SAR",
         "search_query": "Umbreon ex 187 Prismatic Evolutions",
         "expected_price": 1150,
         "min_price": 200,
+        "max_price": 3000,
     },
     {
         "card_name": "Mega Charizard ex SIR",
         "search_query": "Mega Charizard ex 125 Phantasmal Flames",
         "expected_price": 830,
         "min_price": 200,
+        "max_price": 2000,
     },
     {
         "card_name": "Pikachu ex SIR",
         "search_query": "Pikachu ex 276 Ascended Heroes",
         "expected_price": 1000,
         "min_price": 200,
+        "max_price": 2500,
     },
-    # ── EX Team Rocket Returns (2004) ──
-    {
-        "card_name": "Mudkip Gold Star",
-        "search_query": "Mudkip Gold Star 107 EX Team Rocket Returns",
-        "expected_price": 250,
-        "min_price": 50,
-    },
-    {
-        "card_name": "Torchic Gold Star",
-        "search_query": "Torchic Gold Star 108 EX Team Rocket Returns",
-        "expected_price": 300,
-        "min_price": 50,
-    },
-    {
-        "card_name": "Treecko Gold Star",
-        "search_query": "Treecko Gold Star 109 EX Team Rocket Returns",
-        "expected_price": 250,
-        "min_price": 50,
-    },
-
-    # ── EX Deoxys (2005) ──
-    {
-        "card_name": "Latias Gold Star",
-        "search_query": "Latias Gold Star 105 EX Deoxys",
-        "expected_price": 400,
-        "min_price": 50,
-    },
-    {
-        "card_name": "Latios Gold Star",
-        "search_query": "Latios Gold Star 106 EX Deoxys",
-        "expected_price": 400,
-        "min_price": 50,
-    },
-    {
-        "card_name": "Rayquaza Gold Star",
-        "search_query": "Rayquaza Gold Star 107 EX Deoxys",
-        "expected_price": 3000,
-        "min_price": 200,
-    },
-
-    # ── EX Unseen Forces (2005) ──
-    {
-        "card_name": "Entei Gold Star",
-        "search_query": "Entei Gold Star 113 EX Unseen Forces",
-        "expected_price": 500,
-        "min_price": 50,
-    },
-    {
-        "card_name": "Raikou Gold Star",
-        "search_query": "Raikou Gold Star 114 EX Unseen Forces",
-        "expected_price": 600,
-        "min_price": 50,
-    },
-    {
-        "card_name": "Suicune Gold Star",
-        "search_query": "Suicune Gold Star 115 EX Unseen Forces",
-        "expected_price": 500,
-        "min_price": 50,
-    },
-
-    # ── EX Holon Phantoms (2006) ──
-    {
-        "card_name": "Gyarados Gold Star",
-        "search_query": "Gyarados Gold Star 102 EX Holon Phantoms",
-        "expected_price": 800,
-        "min_price": 100,
-    },
-    {
-        "card_name": "Mewtwo Gold Star",
-        "search_query": "Mewtwo Gold Star 103 EX Holon Phantoms",
-        "expected_price": 1200,
-        "min_price": 100,
-    },
-    {
-        "card_name": "Pikachu Gold Star",
-        "search_query": "Pikachu Gold Star 104 EX Holon Phantoms",
-        "expected_price": 2000,
-        "min_price": 200,
-    },
-
-    # ── EX Legend Maker (2006) ──
-    {
-        "card_name": "Regirock Gold Star",
-        "search_query": "Regirock Gold Star 91 EX Legend Maker",
-        "expected_price": 200,
-        "min_price": 30,
-    },
-    {
-        "card_name": "Regice Gold Star",
-        "search_query": "Regice Gold Star 90 EX Legend Maker",
-        "expected_price": 200,
-        "min_price": 30,
-    },
-    {
-        "card_name": "Registeel Gold Star",
-        "search_query": "Registeel Gold Star 92 EX Legend Maker",
-        "expected_price": 200,
-        "min_price": 30,
-    },
-
-    # ── EX Crystal Guardians (2006) ──
-    {
-        "card_name": "Alakazam Gold Star",
-        "search_query": "Alakazam Gold Star 99 EX Crystal Guardians",
-        "expected_price": 600,
-        "min_price": 50,
-    },
-    {
-        "card_name": "Celebi Gold Star",
-        "search_query": "Celebi Gold Star 100 EX Crystal Guardians",
-        "expected_price": 700,
-        "min_price": 50,
-    },
-
-    # ── EX Dragon Frontiers (2006) ──
-    {
-        "card_name": "Charizard Gold Star",
-        "search_query": "Charizard Gold Star 100 EX Dragon Frontiers",
-        "expected_price": 5000,
-        "min_price": 500,
-    },
-    {
-        "card_name": "Mew Gold Star",
-        "search_query": "Mew Gold Star 101 EX Dragon Frontiers",
-        "expected_price": 1500,
-        "min_price": 200,
-    },
-
-    # ── EX Power Keepers (2007) ──
-    {
-        "card_name": "Flareon Gold Star PK",
-        "search_query": "Flareon Gold Star 100 EX Power Keepers",
-        "expected_price": 500,
-        "min_price": 50,
-    },
-    {
-        "card_name": "Jolteon Gold Star PK",
-        "search_query": "Jolteon Gold Star 101 EX Power Keepers",
-        "expected_price": 600,
-        "min_price": 50,
-    },
-    {
-        "card_name": "Vaporeon Gold Star PK",
-        "search_query": "Vaporeon Gold Star 102 EX Power Keepers",
-        "expected_price": 500,
-        "min_price": 50,
-    },
-
-    # ── POP Series 5 (2007) ──
-    {
-        "card_name": "Espeon Gold Star",
-        "search_query": "Espeon Gold Star 16 POP Series 5",
-        "expected_price": 3000,
-        "min_price": 300,
-    },
-    {
-        "card_name": "Umbreon Gold Star",
-        "search_query": "Umbreon Gold Star 17 POP Series 5",
-        "expected_price": 4000,
-        "min_price": 500,
-    },
-    # ─── CONTINUE ADDING MORE CARDS HERE ───
+    # ─── ADD MORE CARDS HERE ───
 ]
 
 # ── Title blacklist ──
 BLACKLIST_KEYWORDS = [
-    "repack", "mystery", "lot of", "bundle", "custom",
+    "repack", "mystery", "lot of", "bundle of", "custom",
     "proxy", "fake", "replica", "read description",
-    "damaged", "poor condition", "psa", "bgs", "cgc",
-    "graded", "slab", "gem mint", "pristine", "japanese",
-    "jp", "korean", "chinese",
+    "damaged", "poor condition",
+    "japanese", "jp", "korean", "chinese",
+    "complete set", "master set", "bulk lot",
+    "booster box", "booster pack", "etb",
+    "code card", "online code",
 ]
 
 
@@ -537,6 +381,7 @@ def scrape_sold_listings(driver, query: str, expected_price: float = 0,
                         title = title[len("New Listing"):].strip()
                     if title.startswith("New listing"):
                         title = title[len("New listing"):].strip()
+
                     # ── Price — look for price in multiple ways ──
                     price = 0.0
                     price_text = ""
@@ -756,6 +601,129 @@ def collect_all_sales(verified_only: bool = False, headless: bool = False):
 
             print()
             time.sleep(random.uniform(3, 6))
+
+        # ── GRADED SEARCH PASS ──
+        # For cards with expected_price >= $50, do additional searches
+        # specifically for PSA and BGS graded versions
+        GRADED_SEARCHES = ["PSA", "BGS", "CGC"]
+        GRADED_THRESHOLD = 50  # Only search graded for cards worth $50+
+
+        graded_cards = [c for c in CARDS_TO_SCRAPE if c.get("expected_price", 0) >= GRADED_THRESHOLD]
+
+        if graded_cards:
+            print(f"\n{'='*55}")
+            print(f"  🏅  GRADED SEARCH PASS — {len(graded_cards)} cards × {len(GRADED_SEARCHES)} graders × 3 grades")
+            print(f"{'='*55}\n")
+
+            for card in graded_cards:
+                name = card["card_name"]
+                base_query = card["search_query"]
+
+                # Build a SHORT graded query — strip card numbers and keep just
+                # the pokemon name + set name. eBay works better with shorter queries.
+                # "Pikachu ex 276 Ascended Heroes" -> "Pikachu ex Ascended Heroes"
+                # "Charizard Gold Star 100 EX Dragon Frontiers" -> "Charizard Gold Star Dragon Frontiers"
+                # "Umbreon ex 161/180 Prismatic Evolutions" -> "Umbreon ex Prismatic Evolutions"
+                clean_query = re.sub(r'\d+/\d+', '', base_query)  # remove "161/180"
+                clean_query = re.sub(r'\b\d{2,3}\b', '', clean_query)  # remove standalone 2-3 digit numbers
+                clean_query = re.sub(r'\bEX\b', '', clean_query)  # remove "EX" prefix from set names
+                clean_query = re.sub(r'\s+', ' ', clean_query).strip()
+
+                for grader in GRADED_SEARCHES:
+                    # Each grading company uses different grade scales
+                    grade_scales = {
+                        "PSA": ["10", "9", "8"],       # PSA uses whole numbers only
+                        "BGS": ["10", "9.5", "9"],     # BGS uses half grades
+                        "CGC": ["10", "9.5", "9"],     # CGC uses half grades
+                    }
+                    grades_to_search = grade_scales.get(grader, ["10", "9"])
+
+                    for grade_num in grades_to_search:
+                        graded_query = f"{grader} {grade_num} {clean_query}"
+                        print(f"  🏅  {name} [{grader} {grade_num}]")
+                        print(f"      Query: \"{graded_query}\"")
+
+                        sales = scrape_sold_listings(
+                            driver,
+                            graded_query,
+                            expected_price=card.get("expected_price", 0) * 2,
+                            min_price=card.get("min_price", 0),
+                            pages=1,
+                        )
+
+                    if not sales:
+                        print(f"      ⚠️  No graded listings found\n")
+                        continue
+
+                    # FILTER: only keep listings that actually mention the grader in the title
+                    # eBay returns irrelevant results even with PSA/BGS in the query
+                    grader_aliases = {
+                        "PSA": ["PSA", "PROFESSIONAL SPORTS AUTHENTICATOR"],
+                        "BGS": ["BGS", "BECKETT", "BKT"],
+                        "CGC": ["CGC"],
+                    }
+                    aliases = grader_aliases.get(grader, [grader])
+                    graded_sales = [
+                        s for s in sales
+                        if any(alias in s["title"].upper() for alias in aliases)
+                    ]
+
+                    skipped = len(sales) - len(graded_sales)
+                    if skipped > 0:
+                        print(f"      🔍  {len(sales)} results, {skipped} skipped (no {grader} in title)")
+
+                    new_count = 0
+                    updated_count = 0
+                    for sale in graded_sales:
+                        if is_blacklisted(sale["title"]):
+                            continue
+                        try:
+                            # First try to insert as new
+                            c.execute("""
+                                INSERT OR IGNORE INTO sales_history
+                                (card_name, title, sold_price, sold_date, condition,
+                                 listing_type, url, scraped_at, confidence_score,
+                                 confidence_flags, seller_feedback, bid_count, best_offer)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """, (
+                                name, sale["title"], sale["sold_price"],
+                                sale["sold_date"], sale["condition"],
+                                sale["listing_type"], sale["url"], scraped_at,
+                                sale["confidence_score"], sale["confidence_flags"],
+                                sale["seller_feedback"], sale["bid_count"],
+                                1 if sale["best_offer"] else 0,
+                            ))
+                            if c.rowcount > 0:
+                                new_count += 1
+                                total_new += 1
+                            else:
+                                # Record already exists — update title if the new one has grading info
+                                # This catches cases where the same listing was scraped earlier
+                                # with a truncated title that didn't include "PSA 10" etc.
+                                c.execute("""
+                                    UPDATE sales_history
+                                    SET title = ?
+                                    WHERE sold_price = ? AND sold_date = ? AND card_name = ?
+                                    AND (title NOT LIKE '%PSA%' AND title NOT LIKE '%BGS%'
+                                         AND title NOT LIKE '%CGC%' AND title NOT LIKE '%BECKETT%')
+                                """, (
+                                    sale["title"], sale["sold_price"],
+                                    sale["sold_date"], name,
+                                ))
+                                if c.rowcount > 0:
+                                    updated_count += 1
+                        except sqlite3.IntegrityError:
+                            pass
+
+                    print(f"      ✅  {len(graded_sales)} graded listings, {new_count} new, {updated_count} updated")
+                    print()
+                    time.sleep(random.uniform(2, 4))
+
+            # Re-parse grades for all new records
+            from grade_parser import update_all_grades, init_grade_columns
+            init_grade_columns()
+            conn.commit()
+            update_all_grades()
 
     finally:
         driver.quit()

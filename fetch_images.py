@@ -119,10 +119,59 @@ def search_ptcg_gold_star(pokemon_name, set_name):
 
 
 def search_ptcg_generic(card_name):
-    """Search for any card by name."""
+    """Search for any card by name. Handles formats like 'Pikachu ex 28/180 Prismatic Evolutions'."""
+    
+    # Try to extract pokemon name, card number, and set name from format: "Name Number/Total SetName"
+    match = re.match(r'^(.+?)\s+(\d+)/(\d+)\s+(.+)$', card_name)
+    if match:
+        pokemon_name = match.group(1).strip()
+        card_number = match.group(2)
+        set_name = match.group(4).strip()
+        
+        # Search by name + set + number for exact match
+        q = urllib.parse.quote(f'name:"{pokemon_name}" set.name:"{set_name}" number:"{card_number}"')
+        url = f"{PTCG_API}/cards?q={q}&pageSize=1"
+        req = urllib.request.Request(url, headers={"User-Agent": "Pokemetrics/1.0"})
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read().decode())
+            cards = data.get("data", [])
+            if cards:
+                return {
+                    "small": cards[0].get("images", {}).get("small", ""),
+                    "large": cards[0].get("images", {}).get("large", ""),
+                }
+        except Exception:
+            pass
+        
+        # Fallback: just name + set
+        q2 = urllib.parse.quote(f'name:"{pokemon_name}" set.name:"{set_name}"')
+        url2 = f"{PTCG_API}/cards?q={q2}&pageSize=5&orderBy=number"
+        req2 = urllib.request.Request(url2, headers={"User-Agent": "Pokemetrics/1.0"})
+        try:
+            with urllib.request.urlopen(req2, timeout=15) as resp2:
+                data2 = json.loads(resp2.read().decode())
+            cards2 = data2.get("data", [])
+            # Find the one with matching number
+            for c in cards2:
+                if c.get("number") == card_number:
+                    return {
+                        "small": c.get("images", {}).get("small", ""),
+                        "large": c.get("images", {}).get("large", ""),
+                    }
+            # If no exact number match, return first result
+            if cards2:
+                return {
+                    "small": cards2[0].get("images", {}).get("small", ""),
+                    "large": cards2[0].get("images", {}).get("large", ""),
+                }
+        except Exception:
+            pass
+    
+    # Original fallback for card names without the new format
     clean = re.sub(r'\d+', '', card_name)
     clean = re.sub(r'\b(SAR|SIR|IR|HR|MHR|PK|Delta|Gold Star|ex)\b', '', clean, flags=re.IGNORECASE)
-    clean = clean.strip().replace("  ", " ")
+    clean = clean.strip().replace("  ", " ").replace("/", "")
 
     q = urllib.parse.quote(f'name:"{clean}"')
     url = f"{PTCG_API}/cards?q={q}&pageSize=1&orderBy=-set.releaseDate"
@@ -223,4 +272,11 @@ def get_all_card_images():
 
 
 if __name__ == "__main__":
+    if "--refetch" in sys.argv:
+        # Clear all non-manual images so they get re-fetched
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute("DELETE FROM card_images WHERE source != 'manual'")
+        conn.commit()
+        conn.close()
+        print("🔄  Cleared all cached images. Re-fetching...")
     fetch_all_images()
