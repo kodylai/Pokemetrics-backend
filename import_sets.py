@@ -1,57 +1,154 @@
 """
-Set Importer
-==============
+Set Importer v2
+=================
 Fetches full card lists from the PokemonTCG API and generates
 CARDS_TO_SCRAPE entries for sales_scraper.py.
 
+Sets included:
+- Base Set (holos)
+- Evolving Skies (alt arts + chase)
+- Phantasmal Flames (full set)
+- Ascended Heroes (full set)
+- Surging Sparks (chase cards)
+- Crystal cards (Skyridge + Aquapolis)
+- Shining cards (Neo Destiny + Neo Revelation)
+
 Usage:
   python import_sets.py
-
-This will:
-1. Fetch all cards from Prismatic Evolutions and 151
-2. Generate a Python file with all card entries
-3. Print instructions for adding them to your scraper
 """
 
 import urllib.request
 import urllib.parse
 import json
 import time
+import re
 
 PTCG_API = "https://api.pokemontcg.io/v2"
 
+# ══════════════════════════════════════════════════════════════════
+# SETS TO IMPORT
+# ══════════════════════════════════════════════════════════════════
+
 SETS_TO_IMPORT = [
+    # ── Already tracking (skip these if re-running) ──
+    # Uncomment if you need to regenerate
+    # {
+    #     "name": "Prismatic Evolutions",
+    #     "search": "Prismatic Evolutions",
+    #     "category": "prismatic_evolutions",
+    #     "mode": "all",
+    # },
+    # {
+    #     "name": "151",
+    #     "search": "151",
+    #     "category": "sv_151",
+    #     "mode": "all",
+    # },
+
+    # ── Classic Sets ──
     {
-        "name": "Prismatic Evolutions",
-        "search": "Prismatic Evolutions",
-        "category": "prismatic_evolutions",
-        "min_price_common": 0.50,
-        "min_price_rare": 2.00,
+        "name": "Base Set",
+        "search": "Base",
+        "category": "base_set",
+        "mode": "holo_only",  # Only holos — the iconic cards
+        "min_price_common": 1.00,
+        "min_price_rare": 5.00,
+        "min_price_chase": 50.00,
+    },
+
+    # ── Sword & Shield Era ──
+    {
+        "name": "Evolving Skies",
+        "search": "Evolving Skies",
+        "category": "evolving_skies",
+        "mode": "chase_only",  # Alt arts and ultra rares only
+        "min_price_common": 1.00,
+        "min_price_rare": 5.00,
         "min_price_chase": 20.00,
     },
+
+    # ── Scarlet & Violet 2025-2026 ──
     {
-        "name": "151",
-        "search": "151",
-        "category": "sv_151",
+        "name": "Surging Sparks",
+        "search": "Surging Sparks",
+        "category": "surging_sparks",
+        "mode": "chase_only",
         "min_price_common": 0.50,
         "min_price_rare": 2.00,
-        "min_price_chase": 20.00,
+        "min_price_chase": 10.00,
+    },
+
+    # ── Neo Era ──
+    {
+        "name": "Neo Destiny",
+        "search": "Neo Destiny",
+        "category": "neo_shining",
+        "mode": "shining_only",  # Only Shining cards
+        "min_price_chase": 100.00,
+    },
+    {
+        "name": "Neo Revelation",
+        "search": "Neo Revelation",
+        "category": "neo_shining",
+        "mode": "shining_only",
+        "min_price_chase": 100.00,
+    },
+
+    # ── e-Reader Crystal Cards ──
+    {
+        "name": "Skyridge",
+        "search": "Skyridge",
+        "category": "crystal_cards",
+        "mode": "crystal_only",  # Only Crystal type cards
+        "min_price_chase": 200.00,
+    },
+    {
+        "name": "Aquapolis",
+        "search": "Aquapolis",
+        "category": "crystal_cards",
+        "mode": "crystal_only",
+        "min_price_chase": 200.00,
     },
 ]
 
-# Rarities that count as "chase" (high value)
+# ── Manual card entries for sets the API might not have yet ──
+MANUAL_CARDS = [
+    # Phantasmal Flames — 2026 set, may not be in API yet
+    # Add the chase cards manually
+    {"card_name": "Mega Charizard ex SIR", "search_query": "Mega Charizard ex 125 Phantasmal Flames", "expected_price": 1000, "min_price": 50, "category": "phantasmal_flames"},
+    {"card_name": "Mega Blastoise ex SIR", "search_query": "Mega Blastoise ex SIR Phantasmal Flames", "expected_price": 200, "min_price": 20, "category": "phantasmal_flames"},
+    {"card_name": "Mega Venusaur ex SIR", "search_query": "Mega Venusaur ex SIR Phantasmal Flames", "expected_price": 150, "min_price": 20, "category": "phantasmal_flames"},
+    {"card_name": "Mega Gengar ex SIR", "search_query": "Mega Gengar ex SIR Phantasmal Flames", "expected_price": 200, "min_price": 20, "category": "phantasmal_flames"},
+    {"card_name": "Mega Rayquaza ex SIR", "search_query": "Mega Rayquaza ex SIR Phantasmal Flames", "expected_price": 300, "min_price": 20, "category": "phantasmal_flames"},
+    {"card_name": "Mega Mewtwo ex SIR", "search_query": "Mega Mewtwo ex SIR Phantasmal Flames", "expected_price": 250, "min_price": 20, "category": "phantasmal_flames"},
+    {"card_name": "Mega Gardevoir ex SIR", "search_query": "Mega Gardevoir ex SIR Phantasmal Flames", "expected_price": 200, "min_price": 20, "category": "phantasmal_flames"},
+    {"card_name": "Mega Lucario ex SIR", "search_query": "Mega Lucario ex SIR Phantasmal Flames", "expected_price": 150, "min_price": 20, "category": "phantasmal_flames"},
+    {"card_name": "Mega Sceptile ex SIR", "search_query": "Mega Sceptile ex SIR Phantasmal Flames", "expected_price": 100, "min_price": 20, "category": "phantasmal_flames"},
+    {"card_name": "Mega Swampert ex SIR", "search_query": "Mega Swampert ex SIR Phantasmal Flames", "expected_price": 100, "min_price": 20, "category": "phantasmal_flames"},
+    {"card_name": "Mega Blaziken ex SIR", "search_query": "Mega Blaziken ex SIR Phantasmal Flames", "expected_price": 100, "min_price": 20, "category": "phantasmal_flames"},
+
+    # Ascended Heroes — 2026 set
+    {"card_name": "Pikachu ex SIR", "search_query": "Pikachu ex 276 Ascended Heroes", "expected_price": 1500, "min_price": 100, "category": "ascended_heroes"},
+    {"card_name": "Dragonite ex SIR", "search_query": "Dragonite ex SIR Ascended Heroes", "expected_price": 200, "min_price": 20, "category": "ascended_heroes"},
+    {"card_name": "Mewtwo ex SIR", "search_query": "Mewtwo ex SIR Ascended Heroes", "expected_price": 200, "min_price": 20, "category": "ascended_heroes"},
+    {"card_name": "Mew ex SIR", "search_query": "Mew ex SIR Ascended Heroes", "expected_price": 150, "min_price": 20, "category": "ascended_heroes"},
+    {"card_name": "Gyarados ex SIR", "search_query": "Gyarados ex SIR Ascended Heroes", "expected_price": 150, "min_price": 20, "category": "ascended_heroes"},
+    {"card_name": "Arcanine ex SIR", "search_query": "Arcanine ex SIR Ascended Heroes", "expected_price": 100, "min_price": 20, "category": "ascended_heroes"},
+]
+
+# Rarities
 CHASE_RARITIES = [
     "Special Illustration Rare", "Illustration Rare", "Ultra Rare",
     "Hyper Rare", "ACE SPEC Rare", "Double Rare",
+    "Rare BREAK", "Rare Holo VMAX", "Rare Holo VSTAR",
+    "Rare Secret", "Rare Rainbow", "Rare Ultra",
 ]
-
-RARE_RARITIES = [
-    "Rare", "Rare Holo", "Rare Holo EX", "Rare Holo ex",
-]
+RARE_RARITIES = ["Rare", "Rare Holo", "Rare Holo EX", "Rare Holo ex"]
+SHINING_RARITIES = ["Rare Shining"]
+CRYSTAL_RARITIES = ["Rare Holo"]
 
 
 def fetch_set_cards(set_name):
-    """Fetch all cards from a set via PokemonTCG API."""
     all_cards = []
     page = 1
     while True:
@@ -64,24 +161,36 @@ def fetch_set_cards(set_name):
         except Exception as e:
             print(f"  ⚠️  Page {page} error: {e}")
             break
-
         batch = data.get("data", [])
         all_cards.extend(batch)
         print(f"  📄  Page {page}: {len(batch)} cards")
-
         if len(batch) < 100:
             break
         page += 1
         time.sleep(0.5)
-
     return all_cards
 
 
-def generate_scraper_entries(cards, set_config):
-    """Generate CARDS_TO_SCRAPE entries from API card data."""
+def filter_cards(cards, mode):
+    """Filter cards based on mode."""
+    if mode == "all":
+        return cards
+    elif mode == "holo_only":
+        return [c for c in cards if "Holo" in (c.get("rarity") or "") or c.get("supertype") == "Energy"]
+    elif mode == "chase_only":
+        return [c for c in cards if (c.get("rarity") or "") in CHASE_RARITIES]
+    elif mode == "shining_only":
+        return [c for c in cards if "Shining" in (c.get("name") or "") or (c.get("rarity") or "") in SHINING_RARITIES]
+    elif mode == "crystal_only":
+        return [c for c in cards if "Crystal" in (c.get("name") or "")]
+    return cards
+
+
+def generate_entries(cards, set_config):
     entries = []
     set_name = set_config["name"]
     category = set_config["category"]
+    total = cards[-1]["number"] if cards else "?"
 
     for card in cards:
         name = card.get("name", "")
@@ -89,26 +198,21 @@ def generate_scraper_entries(cards, set_config):
         rarity = card.get("rarity", "Common")
         set_display = card.get("set", {}).get("name", set_name)
 
-        # Build a descriptive card name
-        # For cards with same name, add number to distinguish
-        card_name = f"{name} {number}/{cards[-1]['number']} {set_display}"
+        card_name = f"{name} {number}/{total} {set_display}"
 
-        # Build eBay search query — use QUOTED card name + card number/total + set name
-        # This prevents eBay from returning random lots and bundles
-        # e.g. '"Bill\'s Transfer" 194/165 "Scarlet Violet 151"' instead of 'Bill\'s Transfer 194 151'
+        # Build precise eBay search query
         set_short = set_display.replace("Scarlet & Violet ", "SV ").replace("Sword & Shield ", "SS ")
-        search_query = f'"{name}" {number}/{cards[-1]["number"]} "{set_short}" -lot -bundle -set -collection -binder'
+        search_query = f'"{name}" {number}/{total} "{set_short}" -lot -bundle -collection -binder'
 
-        # Set min_price based on rarity
-        if rarity in CHASE_RARITIES:
-            min_price = set_config["min_price_chase"]
-            expected = 50
+        if rarity in CHASE_RARITIES or rarity in SHINING_RARITIES:
+            min_price = set_config.get("min_price_chase", 20)
+            expected = 100
         elif rarity in RARE_RARITIES:
-            min_price = set_config["min_price_rare"]
-            expected = 10
+            min_price = set_config.get("min_price_rare", 5)
+            expected = 20
         else:
-            min_price = set_config["min_price_common"]
-            expected = 2
+            min_price = set_config.get("min_price_common", 1)
+            expected = 5
 
         entries.append({
             "card_name": card_name,
@@ -116,32 +220,22 @@ def generate_scraper_entries(cards, set_config):
             "expected_price": expected,
             "min_price": min_price,
             "category": category,
-            "rarity": rarity,
-            "number": number,
-            "pokemon": name,
         })
 
     return entries
 
 
 def write_output(all_entries, filename="set_cards_config.py"):
-    """Write all entries to a Python file."""
     with open(filename, "w", encoding="utf-8") as f:
-        f.write('"""\n')
-        f.write("Auto-generated card scraper config\n")
-        f.write(f"Total cards: {len(all_entries)}\n")
-        f.write('"""\n\n')
-        f.write("# ══════════════════════════════════════════\n")
-        f.write("# Copy everything below into CARDS_TO_SCRAPE\n")
-        f.write("# in sales_scraper.py\n")
-        f.write("# ══════════════════════════════════════════\n\n")
+        f.write(f'# Auto-generated card config — {len(all_entries)} cards\n')
+        f.write('# Copy into CARDS_TO_SCRAPE in sales_scraper.py\n\n')
         f.write("NEW_CARDS = [\n")
 
-        current_category = None
+        current_cat = None
         for entry in all_entries:
             cat = entry.get("category", "")
-            if cat != current_category:
-                current_category = cat
+            if cat != current_cat:
+                current_cat = cat
                 f.write(f"\n    # ── {cat.upper().replace('_', ' ')} ──\n")
 
             f.write(f"    {{\n")
@@ -155,39 +249,45 @@ def write_output(all_entries, filename="set_cards_config.py"):
         f.write("]\n")
 
     print(f"\n✅  Wrote {len(all_entries)} card entries to {filename}")
-    print(f"    Copy the entries from {filename} into your sales_scraper.py CARDS_TO_SCRAPE list")
 
 
 def main():
-    print("🖼️  Set Importer — Fetching card lists from PokemonTCG API")
+    print("🖼️  Set Importer v2")
     print("─" * 55)
 
     all_entries = []
 
-    for set_config in SETS_TO_IMPORT:
-        print(f"\n🔍  Fetching: {set_config['name']}")
-        cards = fetch_set_cards(set_config["search"])
-        print(f"  ✅  Found {len(cards)} cards")
+    for sc in SETS_TO_IMPORT:
+        print(f"\n🔍  Fetching: {sc['name']} (mode: {sc.get('mode', 'all')})")
+        cards = fetch_set_cards(sc["search"])
 
         if not cards:
-            print(f"  ⚠️  No cards found for '{set_config['search']}'")
-            print(f"      The PokemonTCG API might use a different set name.")
-            print(f"      Try searching at: https://pokemontcg.io/")
+            print(f"  ⚠️  No cards found for '{sc['search']}'")
             continue
 
-        entries = generate_scraper_entries(cards, set_config)
+        filtered = filter_cards(cards, sc.get("mode", "all"))
+        print(f"  ✅  {len(cards)} total, {len(filtered)} after filter ({sc.get('mode', 'all')})")
+
+        entries = generate_entries(filtered, sc)
         all_entries.extend(entries)
 
-        # Print summary
-        chase = sum(1 for e in entries if e["expected_price"] >= 50)
-        rare = sum(1 for e in entries if 10 <= e["expected_price"] < 50)
-        common = sum(1 for e in entries if e["expected_price"] < 10)
-        print(f"  📊  {chase} chase cards, {rare} rares, {common} commons")
+    # Add manual cards
+    if MANUAL_CARDS:
+        print(f"\n📝  Adding {len(MANUAL_CARDS)} manual card entries")
+        all_entries.extend(MANUAL_CARDS)
 
     if all_entries:
         write_output(all_entries)
+        print(f"\n📊  Summary:")
+        cats = {}
+        for e in all_entries:
+            cat = e.get("category", "unknown")
+            cats[cat] = cats.get(cat, 0) + 1
+        for cat, count in sorted(cats.items()):
+            print(f"  {cat:<25} {count:>4} cards")
+        print(f"  {'TOTAL':<25} {len(all_entries):>4} cards")
     else:
-        print("\n⚠️  No cards fetched. Check the set names and try again.")
+        print("\n⚠️  No cards fetched.")
 
 
 if __name__ == "__main__":
